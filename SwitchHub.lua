@@ -65,7 +65,7 @@ end
 
 ToggleButton.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
+        dragging = false
         dragStart = input.Position
         startPos = ToggleButton.Position
         input.Changed:Connect(function()
@@ -107,16 +107,16 @@ end
 --=========================================
 -- LOGIC BẬT / TẮT (TOGGLE)
 --=========================================
-_G.AutoAttack = false -- Trạng thái mặc định là TẮT
+_G.AutoAttack = true -- Trạng thái mặc định là TẮT
 
 ToggleButton.MouseButton1Click:Connect(function()
     _G.AutoAttack = not _G.AutoAttack -- Đảo trạng thái
     
     -- Cập nhật Text nhưng giữ nguyên nền trong suốt và màu chữ đen
     if _G.AutoAttack then
-        ToggleButton.Text = "[ Switch Hub | Blox Fruits ]\nFast Attack: [ON]"
+        ToggleButton.Text = "[ Switch Hub🇻🇳 | Blox Fruits ]\nFast Attack: [ON]"
     else
-        ToggleButton.Text = "[ Switch Hub | Blox Fruits ]\nFast Attack: [OFF]"
+        ToggleButton.Text = "[ Switch Hub🇻🇳 | Blox Fruits ]\nFast Attack: [OFF]"
         -- Khi tắt, thực hiện dừng Tween để phù hợp với script khác
         StopAllTween()
     end
