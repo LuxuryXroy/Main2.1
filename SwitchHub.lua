@@ -1,7 +1,8 @@
---========================================================================
--- Tên: [ Switch Hub | Blox Fruits ] - Fast Attack Standalone
--- Tính năng: Fast Attack + Nút Bật/Tắt trên màn hình + Hỗ trợ Dừng Tween
---========================================================================
+--[[
+    [ Switch Hub | Blox Fruits ]
+    Tính năng: Fast Attack + Stop Tween
+    Cập nhật UI: Nền trắng trong suốt, Chữ đen.
+]]
 
 if not game:IsLoaded() then game.Loaded:Wait() end
 
@@ -9,49 +10,59 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local CoreGui = game:GetService("CoreGui")
 local RunService = game:GetService("RunService")
+local ContentProvider = game:GetService("ContentProvider")
 
--- Xóa UI cũ nếu chạy lại script nhiều lần
-local guiName = "SwitchHub_FastAttackUI"
-local success = pcall(function()
-    if CoreGui:FindFirstChild(guiName) then
-        CoreGui[guiName]:Destroy()
+-- Tên duy nhất cho UI để tránh bị trùng khi chạy lại script
+local uiName = "SwitchHub_FA_TransparentUI"
+local success, result = pcall(function()
+    if CoreGui:FindFirstChild(uiName) then
+        CoreGui[uiName]:Destroy()
     end
 end)
 if not success then
-    if LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild(guiName) then
-        LocalPlayer.PlayerGui[guiName]:Destroy()
+    if LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild(uiName) then
+        LocalPlayer.PlayerGui[uiName]:Destroy()
     end
 end
 
 --=========================================
--- TẠO GIAO DIỆN (UI) Ở GIỮA TRÊN MÀN HÌNH
+-- CẤU CẤU TẠO UI (MÀU TRẮNG TRONG SUỐT, CHỮ ĐEN)
 --=========================================
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = guiName
+ScreenGui.Name = uiName
 ScreenGui.ResetOnSpawn = false
 
--- Fallback nếu executor không hỗ trợ CoreGui
+-- Đưa UI vào CoreGui (nếu executor hỗ trợ), nếu không thì đưa vào PlayerGui
 local s, e = pcall(function() ScreenGui.Parent = CoreGui end)
 if not s then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 
+-- Nút bấm chính
 local ToggleButton = Instance.new("TextButton")
 ToggleButton.Parent = ScreenGui
-ToggleButton.AnchorPoint = Vector2.new(0.5, 0)
-ToggleButton.Position = UDim2.new(0.5, 0, 0, 15) -- Giữa màn hình, cách mép trên 15px
-ToggleButton.Size = UDim2.new(0, 250, 0, 45)
-ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50) -- Màu đỏ (Mặc định là TẮT)
-ToggleButton.BorderSizePixel = 0
-ToggleButton.Font = Enum.Font.GothamBold
-ToggleButton.Text = "[ Switch Hub | Blox Fruits ]\nFast Attack: OFF"
-ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButton.AnchorPoint = Vector2.new(0.5, 0) -- Giữa ngang, đỉnh dọc
+ToggleButton.Position = UDim2.new(0.5, 0, 0, 15) -- Giữa phía trên
+ToggleButton.Size = UDim2.new(0, 220, 0, 40)
+ToggleButton.Font = Enum.Font.GothamMedium
 ToggleButton.TextSize = 14
 
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 8)
-UICorner.Parent = ToggleButton
+-- YÊU CẦU CHÍNH: NỀN TRẮNG TRONG SUỐT, CHỮ ĐEN
+ToggleButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255) -- Màu trắng
+ToggleButton.BackgroundTransparency = 1 -- TRONG SUỐT HOÀN TOÀN
+ToggleButton.TextColor3 = Color3.fromRGB(0, 0, 0) -- Màu đen
+ToggleButton.BorderSizePixel = 0
 
--- Tính năng kéo thả UI (Drag)
+-- Text mặc định ban đầu
+ToggleButton.Text = "[ Switch Hub | Blox Fruits ]\nFast Attack: [OFF]"
+
+--=========================================
+-- TÍNH NĂNG KÉO THẢ (DRAG)
+--=========================================
 local dragging, dragInput, dragStart, startPos
+local function update(input)
+    local delta = input.Position - dragStart
+    ToggleButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
 ToggleButton.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         dragging = true
@@ -62,30 +73,29 @@ ToggleButton.InputBegan:Connect(function(input)
         end)
     end
 end)
+
 ToggleButton.InputChanged:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
 end)
+
 RunService.Heartbeat:Connect(function()
-    if dragging and dragInput then
-        local delta = dragInput.Position - dragStart
-        ToggleButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
+    if dragging and dragInput then update(dragInput) end
 end)
 
 --=========================================
--- HÀM DỪNG TẤT CẢ TWEEN/HOẠT ĐỘNG KHÁC
+-- HÀM DỪNG TWEEN/HOẠT ĐỘNG
 --=========================================
-local function StopAllActivity()
+local function StopAllTween()
     local char = LocalPlayer.Character
     if char and char:FindFirstChild("HumanoidRootPart") then
         local hrp = char.HumanoidRootPart
         
-        -- Dừng Tween bằng cách neo nhân vật lại trong khoảnh khắc
+        -- Dừng Tween bằng cách neo nhân vật tạm thời
         hrp.Anchored = true
         task.wait(0.1)
         hrp.Anchored = false
         
-        -- Xóa các BodyMover di chuyển nhân vật (thường được dùng bởi các Hub Auto Farm)
+        -- Xóa các công cụ di chuyển phổ biến của script khác
         for _, v in pairs(hrp:GetChildren()) do
             if v:IsA("BodyVelocity") or v:IsA("BodyGyro") or v:IsA("BodyPosition") or v:IsA("LinearVelocity") or v:IsA("AlignPosition") then
                 v:Destroy()
@@ -95,21 +105,20 @@ local function StopAllActivity()
 end
 
 --=========================================
--- LOGIC BẬT / TẮT
+-- LOGIC BẬT / TẮT (TOGGLE)
 --=========================================
-_G.AutoAttack = false
+_G.AutoAttack = false -- Trạng thái mặc định là TẮT
 
 ToggleButton.MouseButton1Click:Connect(function()
-    _G.AutoAttack = not _G.AutoAttack
+    _G.AutoAttack = not _G.AutoAttack -- Đảo trạng thái
     
+    -- Cập nhật Text nhưng giữ nguyên nền trong suốt và màu chữ đen
     if _G.AutoAttack then
-        ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50) -- Chuyển xanh
-        ToggleButton.Text = "[ Switch Hub | Blox Fruits ]\nFast Attack: ON"
+        ToggleButton.Text = "[ Switch Hub | Blox Fruits ]\nFast Attack: [ON]"
     else
-        ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50) -- Chuyển đỏ
-        ToggleButton.Text = "[ Switch Hub | Blox Fruits ]\nFast Attack: OFF"
-        -- Gọi hàm dừng Tween khi tắt
-        StopAllActivity()
+        ToggleButton.Text = "[ Switch Hub | Blox Fruits ]\nFast Attack: [OFF]"
+        -- Khi tắt, thực hiện dừng Tween để phù hợp với script khác
+        StopAllTween()
     end
 end)
 
@@ -128,7 +137,7 @@ local v3 = nil
 local u4 = nil
 local u5 = nil
 
--- Cho vòng lặp lấy Remote vào task.spawn để không bị treo giao diện
+-- Cho vòng lặp lấy Remote vào task.spawn để không bị treo UI
 task.spawn(function()
     while true do
         local v6
@@ -167,7 +176,7 @@ end)
 -- Vòng lặp tấn công
 task.spawn(function()
     while task.wait(0.0001) do
-        -- Chỉ thực thi nếu bật UI
+        -- Chỉ thực thi nếu toggle bật
         if _G.AutoAttack then
             local _Character = game.Players.LocalPlayer.Character
             local v13
@@ -184,7 +193,8 @@ task.spawn(function()
             })
             local u17 = {}
 
-            if v13 then -- Đảm bảo HRP tồn tại để tránh lỗi
+            -- Đảm bảo có RootPart để tính toán vị trí
+            if v13 then
                 while true do
                     local v18
                     v16, v18 = v14(v15, v16)
@@ -206,6 +216,7 @@ task.spawn(function()
                         local _HumanoidRootPart = v22:FindFirstChild('HumanoidRootPart')
                         local _Humanoid = v22:FindFirstChild('Humanoid')
 
+                        -- Kiểm tra khoảng cách và máu
                         if v22 ~= _Character and (_HumanoidRootPart and (_Humanoid and (_Humanoid.Health > 0 and (_HumanoidRootPart.Position - v13.Position).Magnitude <= 60))) then
                             local v25, v26, v27 = ipairs(v22:GetChildren())
 
@@ -216,6 +227,7 @@ task.spawn(function()
                                 if v27 == nil then
                                     break
                                 end
+                                -- Thêm quái và bộ phận vào danh sách tấn công
                                 if v28:IsA('BasePart') and (_HumanoidRootPart.Position - v13.Position).Magnitude <= 60 then
                                     u17[#u17 + 1] = {v22, v28}
                                 end
@@ -226,8 +238,10 @@ task.spawn(function()
 
                 local _Tool = _Character:FindFirstChildOfClass('Tool')
 
+                -- Kiểm tra trang bị vũ khí phù hợp
                 if #u17 > 0 and (_Tool and (_Tool:GetAttribute('WeaponType') == 'Melee' or _Tool:GetAttribute('WeaponType') == 'Sword')) then
                     pcall(function()
+                        -- Gọi các Remotes tấn công từ code của bạn
                         require(game.ReplicatedStorage.Modules.Net):RemoteEvent('RegisterHit', true)
                         game.ReplicatedStorage.Modules.Net['RE/RegisterAttack']:FireServer()
 
@@ -235,9 +249,17 @@ task.spawn(function()
 
                         if _Head and u4 and u5 then
                             game.ReplicatedStorage.Modules.Net['RE/RegisterHit']:FireServer(_Head, u17, {}, tostring(game.Players.LocalPlayer.UserId):sub(2, 4) .. tostring(coroutine.running()):sub(11, 15))
-                            cloneref(u4):FireServer(string.gsub('RE/RegisterHit', '.', function(p31)
-                                return string.char(bit32.bxor(string.byte(p31), math.floor(workspace:GetServerTimeNow() / 10 % 10) + 1))
-                            end), bit32.bxor(u5 + 909090, game.ReplicatedStorage.Modules.Net.seed:InvokeServer() * 2), _Head, u17)
+                            
+                            -- Phần mã phức tạp từ code của bạn, giữ nguyên
+                            if typeof(cloneref) == "function" then
+                                cloneref(u4):FireServer(string.gsub('RE/RegisterHit', '.', function(p31)
+                                    return string.char(bit32.bxor(string.byte(p31), math.floor(workspace:GetServerTimeNow() / 10 % 10) + 1))
+                                end), bit32.bxor(u5 + 909090, game.ReplicatedStorage.Modules.Net.seed:InvokeServer() * 2), _Head, u17)
+                            else
+                                u4:FireServer(string.gsub('RE/RegisterHit', '.', function(p31)
+                                    return string.char(bit32.bxor(string.byte(p31), math.floor(workspace:GetServerTimeNow() / 10 % 10) + 1))
+                                end), bit32.bxor(u5 + 909090, game.ReplicatedStorage.Modules.Net.seed:InvokeServer() * 2), _Head, u17)
+                            end
                         end
                     end)
                 end
